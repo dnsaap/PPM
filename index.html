@@ -5,7 +5,7 @@
     <title>Monitoring Cuaca Malang Raya - GeoAI</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        #map { height: 100vh; width: 100%; }
+        #map { height: 100vh; width: 100%; background: #222; } /* Background gelap agar awan terlihat */
         body { margin: 0; padding: 0; }
         .dashboard-label {
             position: absolute; top: 10px; left: 60px; z-index: 1000;
@@ -19,31 +19,51 @@
         <h2 style="margin:0; font-size:18px; color: #2c3e50;">Nowcasting Malang Raya</h2>
         <p style="margin:5px 0 0; font-size:12px; color:#666;">Data Satelit Himawari-8/9 (Real-time)</p>
         <hr>
-        <p style="margin:5px 0 0; font-size:11px; color:#e67e22;"><b>Status:</b> GeoAI Monitoring Ready</p>
+        <p id="status" style="margin:5px 0 0; font-size:11px; color:#e67e22;"><b>Status:</b> Memuat Data Satelit...</p>
     </div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import * as je from './jaxa.earth.esm.js';
+    
+    <script src="https://data.earth.jaxa.jp/api/javascript/v1.2.3/jaxa.earth.umd.js"></script>
 
+    <script>
+        // 1. Setup Peta dasar fokus Malang
         const map = L.map('map').setView([-7.98, 112.63], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
+        // 2. Fungsi Utama memanggil satelit JAXA
         (async function(){
             try {
-                // Inisialisasi koleksi data satelit dari JAXA Earth API
+                // Inisialisasi Koleksi (Sesuai dokumentasi JAXA)
                 const collection = new je.stac.Collection({
                     url: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d"
                 });
                 await collection.init();
 
-                const items = await collection.getChildUrlAll();
-                console.log("Berhasil memuat data JAXA: ", items[0]);
+                // Gunakan Helper Leaflet JAXA untuk memunculkan layer
+                const layer = je.leaflet.createLayer({
+                    L: L,
+                    collection: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d",
+                    band: "B13", // Kanal Inframerah untuk suhu puncak awan
+                    opacity: 0.7,
+                    colorMap: {
+                        min: 190,
+                        max: 300,
+                        colors: ["#000066", "#ffffff"] // Skema warna awan
+                    }
+                });
+
+                layer.addTo(map);
+                document.getElementById('status').innerHTML = "<b>Status:</b> Monitoring Real-time Aktif";
+                document.getElementById('status').style.color = "#27ae60";
+
             } catch (error) {
                 console.error("Gagal inisialisasi API JAXA: ", error);
+                document.getElementById('status').innerHTML = "<b>Status:</b> Gagal Memuat Satelit";
+                document.getElementById('status').style.color = "#c0392b";
             }
         })();
     </script>
