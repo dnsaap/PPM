@@ -11,63 +11,60 @@
             position: absolute; top: 10px; left: 60px; z-index: 1000;
             background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3); font-family: sans-serif;
-            max-width: 250px;
         }
-        hr { border: 0; border-top: 1px solid #ccc; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div class="dashboard-label">
         <h2 style="margin:0; font-size:18px; color: #2c3e50;">Nowcasting Malang Raya</h2>
-        <p style="margin:5px 0 0; font-size:12px; color:#666;">Satelit Himawari-8/9 (Real-time)</p>
+        <p style="margin:5px 0 0; font-size:12px; color:#666;">Data Satelit Himawari-8/9 (Real-time)</p>
         <hr>
-        <p id="status" style="margin:5px 0 0; font-size:11px; color:#e67e22;"><b>Status:</b> Menghubungkan ke JAXA...</p>
-        <p style="margin:5px 0 0; font-size:10px; color:#7f8c8d;"><i>Kanal: B13 Infrared (Suhu Awan)</i></p>
+        <p id="status" style="margin:5px 0 0; font-size:11px; color:#e67e22;"><b>Status:</b> Menghubungkan Satelit...</p>
     </div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://data.earth.jaxa.jp/api/javascript/v1.2.3/jaxa.earth.umd.js"></script>
+    
+    <script src="./jaxa.earth.umd.js"></script>
 
     <script>
-        // 1. Inisialisasi Peta Leaflet fokus Malang
+        // Inisialisasi Peta Leaflet
         const map = L.map('map').setView([-7.98, 112.63], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // 2. Fungsi Utama Mengambil dan Menampilkan Data Satelit
         (async function(){
             try {
-                // Setup koleksi data JAXA (Sesuai dokumentasi JavaScript API)
-                const collectionUrl = "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d";
-                
-                // Membuat layer satelit menggunakan library JAXA
-                // Menggunakan kanal B13 untuk mendeteksi suhu puncak awan 
-                const jaxaLayer = await je.leaflet.createLayer({
+                // PENTING: Jika kamu punya API Key dari portal JAXA, masukkan di sini:
+                // je.setApiKey("MASUKKAN_API_KEY_KAMU");
+
+                // Inisialisasi Koleksi Satelit
+                const collection = new je.stac.Collection({
+                    url: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d"
+                });
+                await collection.init();
+
+                // Membuat Layer Satelit (Kanal B13 - Infrared)
+                const layer = await je.leaflet.createLayer({
                     L: L,
-                    collection: collectionUrl,
+                    collection: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d",
                     band: "B13", 
                     opacity: 0.7,
                     colorMap: {
-                        min: 190, // Suhu sangat dingin (Awan tebal/potensi hujan) 
-                        max: 300, // Suhu permukaan hangat
-                        colors: ["#ffffff", "#3498db", "#2c3e50"] // Putih ke Biru
+                        min: 190, // Suhu puncak awan (putih pekat = badai/hujan)
+                        max: 300,
+                        colors: ["#ffffff", "#0000ff", "#000033"]
                     }
                 });
 
-                // Tambahkan layer ke peta Leaflet
-                jaxaLayer.addTo(map);
+                // Tampilkan ke Peta
+                layer.addTo(map);
 
-                // Update status di dashboard
-                const statusEl = document.getElementById('status');
-                statusEl.innerHTML = "<b>Status:</b> Monitoring Real-time Aktif";
-                statusEl.style.color = "#27ae60";
+                document.getElementById('status').innerHTML = "<b>Status:</b> Monitoring Aktif";
+                document.getElementById('status').style.color = "#27ae60";
 
-                console.log("Data satelit Himawari berhasil dimuat.");
             } catch (error) {
-                console.error("Gagal memuat API JAXA: ", error);
-                document.getElementById('status').innerHTML = "<b>Status:</b> Gagal Memuat Data";
+                console.error("Error:", error);
+                document.getElementById('status').innerHTML = "<b>Status:</b> Error / Butuh API Key";
                 document.getElementById('status').style.color = "#c0392b";
             }
         })();
