@@ -2,70 +2,83 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Monitoring Cuaca Malang Raya - GeoAI</title>
+    <title>GeoAI Nowcasting Malang Raya</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        #map { height: 100vh; width: 100%; background: #222; }
+        #map { height: 100vh; width: 100%; background: #1a1a1a; }
         body { margin: 0; padding: 0; }
-        .dashboard-label {
-            position: absolute; top: 10px; left: 60px; z-index: 1000;
-            background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3); font-family: sans-serif;
+        .dashboard {
+            position: absolute; top: 15px; left: 60px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            width: 250px;
         }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .active { background: #e8f5e9; color: #2e7d32; }
+        .wait { background: #fff3e0; color: #ef6c00; }
     </style>
 </head>
 <body>
-    <div class="dashboard-label">
-        <h2 style="margin:0; font-size:18px; color: #2c3e50;">Nowcasting Malang Raya</h2>
-        <p style="margin:5px 0 0; font-size:12px; color:#666;">Data Satelit Himawari-8/9 (Real-time)</p>
-        <hr>
-        <p id="status" style="margin:5px 0 0; font-size:11px; color:#e67e22;"><b>Status:</b> Menghubungkan Satelit...</p>
+    <div class="dashboard">
+        <h3 style="margin:0 0 5px 0;">Malang GeoAI</h3>
+        <p style="margin:0; font-size:12px; color:#666;">Precipitation Nowcasting</p>
+        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+        <div id="status-box" class="status-badge wait">Menghubungkan ke JAXA...</div>
+        <p style="font-size:11px; margin-top:10px; color:#555;">Kanal: <b>Infrared B13</b> (Deteksi Awan Dingin)</p>
     </div>
+    
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="./jaxa.earth.umd.js"></script>
 
     <script>
-        // Inisialisasi Peta Leaflet
+        // Setup Peta Fokus Malang Raya
         const map = L.map('map').setView([-7.98, 112.63], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         (async function(){
             try {
-                // PENTING: Jika kamu punya API Key dari portal JAXA, masukkan di sini:
-                // je.setApiKey("MASUKKAN_API_KEY_KAMU");
+                // === MASUKKAN API KEY KAMU DI SINI ===
+                // Kamu bisa mendapatkannya dari portal JAXA Earth API yang kamu buka tadi
+                const MY_API_KEY = "MASUKKAN_KODE_API_KEY_DI_SINI"; 
+                
+                if (MY_API_KEY === "MASUKKAN_KODE_API_KEY_DI_SINI") {
+                    document.getElementById('status-box').innerHTML = "⚠️ Butuh API Key JAXA";
+                    console.warn("API Key belum diisi. Layer tidak akan muncul.");
+                }
 
-                // Inisialisasi Koleksi Satelit
+                // Inisialisasi API Key ke library je
+                // je.setApiKey(MY_API_KEY); 
+
+                // Load Koleksi Himawari
                 const collection = new je.stac.Collection({
                     url: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d"
                 });
                 await collection.init();
 
-                // Membuat Layer Satelit (Kanal B13 - Infrared)
+                // Membuat Layer Satelit (Fokus Nowcasting Cuaca Ekstrem)
                 const layer = await je.leaflet.createLayer({
                     L: L,
                     collection: "https://data.earth.jaxa.jp/stac/v1/collections/himawari89_pdt_01d",
-                    band: "B13", 
+                    band: "B13", // Kanal Infrared untuk suhu puncak awan 
                     opacity: 0.7,
                     colorMap: {
-                        min: 190, // Suhu puncak awan (putih pekat = badai/hujan)
+                        min: 190, // Suhu sangat dingin (Indikasi awan badai) 
                         max: 300,
-                        colors: ["#ffffff", "#0000ff", "#000033"]
+                        colors: ["#ffffff", "#3498db", "#2c3e50"]
                     }
                 });
 
-                // Tampilkan ke Peta
                 layer.addTo(map);
-
-                document.getElementById('status').innerHTML = "<b>Status:</b> Monitoring Aktif";
-                document.getElementById('status').style.color = "#27ae60";
+                
+                const statusBox = document.getElementById('status-box');
+                statusBox.innerHTML = "● Monitoring Real-time Aktif";
+                statusBox.className = "status-badge active";
 
             } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('status').innerHTML = "<b>Status:</b> Error / Butuh API Key";
-                document.getElementById('status').style.color = "#c0392b";
+                console.error("Gagal memuat JAXA:", error);
+                document.getElementById('status-box').innerHTML = "❌ Gagal Memuat Data";
             }
         })();
     </script>
